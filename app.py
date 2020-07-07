@@ -7,9 +7,58 @@
 # os.system("video.mp4")
 
 import srt
+import os
+import re
 from datetime import timedelta
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 
+class Movie:
+    def __init__(self, directory_title, subtitles):
+        self.setAttributes(directory_title)
+        self.subtitles = subtitles
+
+    # this function should differ for every set of movies names and it's only use is for
+    # prettifying the movie data
+    def setAttributes(self, directory_title):
+        self.title = directory_title[:directory_title.find("(")].strip()
+        self.year = directory_title[directory_title.find("(") + 1 : directory_title.find(")")]
+
+        # the movie folder title is not in the format "MOVIE_NAME (YEAR)"
+        if directory_title.find("(") == -1:
+            directory_title = directory_title.replace("."," ")
+            match = re.search("\d",directory_title)
+            # assuming that the first digital number is the year and it is consisting of 4 digits
+            if match is not None:
+                self.title = directory_title[:match.span()[0]].strip()
+                self.year = directory_title[match.span()[0]:match.span()[0] + 4]
+            else:
+                self.title = directory_title
+                self.year = None
+
+    def __repr__(self):
+        return f"{self.title} | {self.year}"
+
+def load_data(movies_location):
+    # the location should contain movies folders and in every folder is a subtitle with
+    # the movie itself
+    os.chdir(movies_location)
+
+    movies = []
+    for f in os.scandir():
+        if not f.is_dir():
+            continue
+
+        location = os.path.join(movies_location ,f.name)
+        os.chdir(location)
+        
+        # getting only the srt subtitles
+        subtitles = [subtitle for subtitle in os.listdir() if ".srt" in subtitle]
+        
+        # adding the movie to the movies list
+        movies.append(Movie(f.name, {"subtitles": subtitles, "location":location}))
+    
+    return movies
+   
 
 def make_videos_from_words(word, srt_file_location):
     # opening the subtitle file
@@ -53,4 +102,6 @@ def make_videos_from_words(word, srt_file_location):
     # closing the srt file
     subtitle_file.close()
 
-make_videos_from_words("hello", "s.srt")
+
+movies = load_data(r"path\to\movies")
+# make_videos_from_words("hello", "s.srt")
